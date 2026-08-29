@@ -11,7 +11,7 @@ using Soenneker.Utils.HttpClientCache.Abstract;
 
 namespace Soenneker.Segment.HttpClients;
 
-///<inheritdoc cref="ISegmentOpenApiHttpClient"/>
+/// <inheritdoc cref="ISegmentOpenApiHttpClient"/>
 public sealed class SegmentOpenApiHttpClient : ISegmentOpenApiHttpClient
 {
     private readonly IHttpClientCache _httpClientCache;
