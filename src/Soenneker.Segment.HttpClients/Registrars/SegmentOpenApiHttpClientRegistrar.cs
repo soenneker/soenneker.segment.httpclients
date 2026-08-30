@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Soenneker.Segment.HttpClients.Abstract;
+using Soenneker.Utils.HttpClientCache.Abstract;
 using Soenneker.Utils.HttpClientCache.Registrar;
 
 namespace Soenneker.Segment.HttpClients.Registrars;
@@ -18,7 +20,11 @@ public static class SegmentOpenApiHttpClientRegistrar
     public static IServiceCollection AddSegmentOpenApiHttpClientAsSingleton(this IServiceCollection services)
     {
         services.AddHttpClientCacheAsSingleton()
-                .TryAddSingleton<ISegmentOpenApiHttpClient, SegmentOpenApiHttpClient>();
+                .TryAddSingleton<ISegmentOpenApiHttpClient>(provider =>
+                    new SegmentOpenApiHttpClient(
+                        provider.GetRequiredService<IHttpClientCache>(),
+                        provider.GetRequiredService<IConfiguration>(),
+                        true));
 
         return services;
     }
@@ -31,7 +37,11 @@ public static class SegmentOpenApiHttpClientRegistrar
     public static IServiceCollection AddSegmentOpenApiHttpClientAsScoped(this IServiceCollection services)
     {
         services.AddHttpClientCacheAsSingleton()
-                .TryAddScoped<ISegmentOpenApiHttpClient, SegmentOpenApiHttpClient>();
+                .TryAddScoped<ISegmentOpenApiHttpClient>(provider =>
+                    new SegmentOpenApiHttpClient(
+                        provider.GetRequiredService<IHttpClientCache>(),
+                        provider.GetRequiredService<IConfiguration>(),
+                        false));
 
         return services;
     }

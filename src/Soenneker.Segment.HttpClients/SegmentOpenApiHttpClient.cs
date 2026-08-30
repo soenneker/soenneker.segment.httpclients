@@ -11,18 +11,23 @@ using Soenneker.Utils.HttpClientCache.Abstract;
 
 namespace Soenneker.Segment.HttpClients;
 
-/// <inheritdoc cref="ISegmentOpenApiHttpClient"/>
 public sealed class SegmentOpenApiHttpClient : ISegmentOpenApiHttpClient
 {
     private readonly IHttpClientCache _httpClientCache;
     private readonly IConfiguration _config;
+    private readonly bool _ownsCachedClient;
 
     private const string _prodBaseUrl = "https://api.segmentapis.com";
 
-    public SegmentOpenApiHttpClient(IHttpClientCache httpClientCache, IConfiguration config)
+    public SegmentOpenApiHttpClient(IHttpClientCache httpClientCache, IConfiguration config) : this(httpClientCache, config, true)
+    {
+    }
+
+    internal SegmentOpenApiHttpClient(IHttpClientCache httpClientCache, IConfiguration config, bool ownsCachedClient)
     {
         _httpClientCache = httpClientCache;
         _config = config;
+        _ownsCachedClient = ownsCachedClient;
     }
 
     public ValueTask<HttpClient> Get(CancellationToken cancellationToken = default)
@@ -47,11 +52,14 @@ public sealed class SegmentOpenApiHttpClient : ISegmentOpenApiHttpClient
 
     public void Dispose()
     {
-        _httpClientCache.RemoveSync(nameof(SegmentOpenApiHttpClient));
+        if (_ownsCachedClient)
+            _httpClientCache.RemoveSync(nameof(SegmentOpenApiHttpClient));
     }
 
     public ValueTask DisposeAsync()
     {
-        return _httpClientCache.Remove(nameof(SegmentOpenApiHttpClient));
+        return _ownsCachedClient
+            ? _httpClientCache.Remove(nameof(SegmentOpenApiHttpClient))
+            : ValueTask.CompletedTask;
     }
 }

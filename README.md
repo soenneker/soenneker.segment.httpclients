@@ -1,43 +1,74 @@
 [![](https://img.shields.io/nuget/v/soenneker.segment.httpclients.svg?style=for-the-badge)](https://www.nuget.org/packages/soenneker.segment.httpclients/)
 [![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.segment.httpclients/publish-package.yml?style=for-the-badge)](https://github.com/soenneker/soenneker.segment.httpclients/actions/workflows/publish-package.yml)
 [![](https://img.shields.io/nuget/dt/soenneker.segment.httpclients.svg?style=for-the-badge)](https://www.nuget.org/packages/soenneker.segment.httpclients/)
+[![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.segment.httpclients/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/soenneker/soenneker.segment.httpclients/actions/workflows/codeql.yml)
 
 # Soenneker.Segment.HttpClients
 
-A .NET thread-safe singleton HttpClient for.
+A cached `HttpClient` provider for Segment's Public API, including configurable token authentication.
 
-## Install
+## Installation
 
 ```bash
 dotnet add package Soenneker.Segment.HttpClients
 ```
 
-## Quick start
+## Configuration
+
+```json
+{
+  "Segment": {
+    "ApiToken": "your-segment-token"
+  }
+}
+```
+
+The default base URL is `https://api.segmentapis.com`, and the default authentication header is `Authorization: Bearer {token}`.
+
+Optional overrides:
+
+```json
+{
+  "Segment": {
+    "ClientBaseUrl": "https://api.segmentapis.com",
+    "ApiToken": "your-segment-token",
+    "AuthHeaderName": "Authorization",
+    "AuthHeaderValueTemplate": "Bearer {token}"
+  }
+}
+```
+
+`ClientBaseUrl` must be absolute. The literal `{token}` in `AuthHeaderValueTemplate` is replaced with `ApiToken`; keep it in the template unless the configured header intentionally does not carry the token.
+
+## Registration
 
 ```csharp
 using Soenneker.Segment.HttpClients.Registrars;
-using Microsoft.Extensions.DependencyInjection;
 
-var services = new ServiceCollection();
-var result = services.AddSegmentOpenApiHttpClientAsSingleton();
+services.AddSegmentOpenApiHttpClientAsSingleton();
 ```
 
-Adds `SegmentOpenApiHttpClient` as a singleton service.
+Scoped registration is available for scoped consumers:
 
-## What you get
+```csharp
+services.AddSegmentOpenApiHttpClientAsScoped();
+```
 
-- `ISegmentOpenApiHttpClient` — A .NET thread-safe singleton HttpClient for.
-- `SegmentOpenApiHttpClientRegistrar` — Registers the OpenAPI HttpClient wrapper for dependency injection.
+Both registrations retain the singleton cached transport. Disposing a scoped wrapper does not remove the shared `HttpClient`.
 
-## API at a glance
+## Usage
 
-| API | What it does | Result / important behavior |
-| --- | --- | --- |
-| `SegmentOpenApiHttpClientRegistrar.AddSegmentOpenApiHttpClientAsSingleton(services)` | Adds `SegmentOpenApiHttpClient` as a singleton service. | The same service collection, so additional registrations can be chained. |
-| `SegmentOpenApiHttpClientRegistrar.AddSegmentOpenApiHttpClientAsScoped(services)` | Adds `SegmentOpenApiHttpClient` as a scoped service. | The same service collection, so additional registrations can be chained. |
+```csharp
+using Soenneker.Segment.HttpClients.Abstract;
 
-## Practical notes
+public sealed class SegmentWorkspaceClient(ISegmentOpenApiHttpClient clientProvider)
+{
+    public async Task<string> GetWorkspaces(CancellationToken cancellationToken)
+    {
+        HttpClient client = await clientProvider.Get(cancellationToken);
+        return await client.GetStringAsync("/workspaces", cancellationToken);
+    }
+}
+```
 
-- Reuse the registered client instead of constructing one per operation.
-- Calls that return a cached or singleton value reuse the same instance until the owning service is disposed.
-- Dispose instances you own when their scope ends so held resources can be released.
+The client is created lazily and then reused. Authentication configuration is applied when that cached client is first created; remove/recreate the owning singleton registration if credentials or endpoints change at runtime.
