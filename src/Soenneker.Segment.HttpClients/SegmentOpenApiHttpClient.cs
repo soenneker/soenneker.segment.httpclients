@@ -35,7 +35,7 @@ public sealed class SegmentOpenApiHttpClient : ISegmentOpenApiHttpClient
     {
         return _httpClientCache.Get(nameof(SegmentOpenApiHttpClient), (config: _config, baseUrl: _config["Segment:ClientBaseUrl"] ?? _prodBaseUrl), static state =>
         {
-            var apiKey = state.config.GetValueStrict<string>("Segment:ApiToken");
+            var apiKey = state.config.GetStringStrict("Segment:ApiToken");
             string authHeaderName = state.config["Segment:AuthHeaderName"] ?? "Authorization";
             string authHeaderValueTemplate = state.config["Segment:AuthHeaderValueTemplate"] ?? "Bearer {token}";
             string authHeaderValue = authHeaderValueTemplate.Replace("{token}", apiKey, StringComparison.Ordinal);
